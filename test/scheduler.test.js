@@ -18,3 +18,9 @@ test('expired subscriptions removed; changes during arrival fetch suppress sends
  const store=mem();await runTick({store,transit:{mode:'live',arrival:async()=>({seconds:480,mode:'live'})},push:{ready:true,send:async()=>{throw Object.assign(Error(),{status:410});}},now:commute});assert.equal(store.read().devices.d.subscription,null);
  const changing=mem();let sent=0;await runTick({store:changing,transit:{mode:'live',arrival:async()=>{changing.data.devices.d.routes[0].enabled=false;return {seconds:480,mode:'live'};}},push:{ready:true,send:async()=>sent++},now:commute});assert.equal(sent,0);
 });
+test('old failed push cannot erase a reconnected subscription',async()=>{
+ const store=mem();const replacement={endpoint:'new'};await runTick({store,transit:{mode:'live',arrival:async()=>({seconds:480,mode:'live'})},push:{ready:true,send:async()=>{store.data.devices.d.subscription=replacement;throw Object.assign(Error(),{status:410});}},now:commute});assert.deepEqual(store.read().devices.d.subscription,replacement);
+});
+test('successful old push cannot stamp a changed commute configuration',async()=>{
+ const store=mem();await runTick({store,transit:{mode:'live',arrival:async()=>({seconds:480,mode:'live'})},push:{ready:true,send:async()=>{store.data.devices.d.routes[0].time='09:30';}},now:commute});assert.equal(store.read().devices.d.routes[0].alerts,undefined);
+});

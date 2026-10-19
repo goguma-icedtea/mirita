@@ -3,7 +3,7 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { resolve, extname, sep } from 'node:path';
-import { AppError, validateRoute, departure } from './domain.js';
+import { AppError, validateRoute, departure, notificationKey } from './domain.js';
 import { validateSubscription } from './push.js';
 const publicRoot=fileURLToPath(new URL('../public/',import.meta.url));
 const mime={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.png':'image/png','.jpg':'image/jpeg','.svg':'image/svg+xml','.webmanifest':'application/manifest+json'};
@@ -24,7 +24,9 @@ export function createApp({store,transit,push,origin=''}){
  if(!['GET','HEAD'].includes(req.method)&&(req.headers.origin!==expected||!String(req.headers['content-type']||'').startsWith('application/json')))throw new AppError('이 페이지에서 다시 시도해 주세요.',403);
  const supplied=req.headers.cookie?.match(/(?:^|;\s*)mirita_device=([a-f0-9]{64})(?:;|$)/)?.[1];const deviceId=supplied&&store.read().devices[supplied]?supplied:randomBytes(32).toString('hex');
  if(deviceId!==supplied)res.setHeader('Set-Cookie',`mirita_device=${deviceId}; HttpOnly; SameSite=Strict; Path=/; Max-Age=31536000${expected.startsWith('https:')?'; Secure':''}`);
- const limitKey=supplied||req.socket.remoteAddress;const now=Date.now();if(limits.size>5000)for(const [key,v]of limits)if(v.until<now)limits.delete(key);const bucket=limits.get(limitKey);if(bucket&&bucket.until>now){if(++bucket.count>180)throw new AppError('잠시 후 다시 시도해 주세요.',429);}else limits.set(limitKey,{until:now+60000,count:1});
+ const now=Date.now();if(limits.size>5000)for(const [key,v]of limits)if(v.until<now)limits.delete(key);
+ const budget=(key,max)=>{const b=limits.get(key);if(b&&b.until>now){if(++b.count>max)throw new AppError('잠시 후 다시 시도해 주세요.',429);}else{if(limits.size>=10000)throw new AppError('잠시 후 다시 시도해 주세요.',429);limits.set(key,{until:now+60000,count:1});}};
+ budget('ip:'+req.socket.remoteAddress,600);if(deviceId===supplied)budget('device:'+deviceId,180);
  const device=()=>store.read().devices[deviceId]||{routes:[],subscription:null};
  const ensure=d=>d.devices[deviceId]??={routes:[],subscription:null};
  const body=async()=>{let n=0;const chunks=[];for await(const chunk of req){n+=chunk.length;if(n>32768)throw new AppError('입력 내용이 너무 길어요.',413);chunks.push(chunk);}try{return JSON.parse(Buffer.concat(chunks).toString()||'{}');}catch{throw new AppError('입력 형식을 확인해 주세요.');}};
@@ -38,11 +40,11 @@ export function createApp({store,transit,push,origin=''}){
  const match=path.match(/^\/api\/routes\/([a-f0-9-]+)(\/arrival)?$/);
  if(match){const route=device().routes.find(r=>r.id===match[1]);if(!route)throw new AppError('저장된 경로를 찾지 못했어요.',404);
  if(match[2]&&req.method==='GET'){const info=await transit.arrival(route);return json(200,{...info,advice:departure(info.seconds,route.walkMinutes,route.bufferMinutes)});}
- if(!match[2]&&req.method==='PUT'){const v=await canonical(await body());await store.transaction(d=>{const u=ensure(d);const i=u.routes.findIndex(r=>r.id===route.id);if(i<0)throw new AppError('경로를 찾지 못했어요.',404);u.routes[i]={...route,...v,alerts:undefined};});return json(200,{...route,...v,alerts:undefined});}
+ if(!match[2]&&req.method==='PUT'){const v=await canonical(await body());await store.transaction(d=>{const u=ensure(d);const i=u.routes.findIndex(r=>r.id===route.id);if(i<0)throw new AppError('경로를 찾지 못했어요.',404);const latest=u.routes[i];u.routes[i]={...latest,...v,alerts:notificationKey(latest)===notificationKey(v)?latest.alerts:undefined};});return json(200,{...route,...v,alerts:undefined});}
  if(!match[2]&&req.method==='DELETE'){await store.transaction(d=>{ensure(d).routes=ensure(d).routes.filter(r=>r.id!==route.id);});return json(200,{ok:true});}}
  if(path==='/api/push/subscription'&&req.method==='POST'){if(!push.ready)throw new AppError('서버 알림 설정이 필요해요.',503);const subscription=validateSubscription(await body());await store.transaction(d=>{ensure(d).subscription=subscription;});return json(200,{ok:true});}
  if(path==='/api/push/subscription'&&req.method==='DELETE'){await store.transaction(d=>{ensure(d).subscription=null;});return json(200,{ok:true});}
- if(path==='/api/push/test'&&req.method==='POST'){if(!push.ready)throw new AppError('서버 알림 설정이 필요해요.',503);if(!device().subscription)throw new AppError('먼저 알림을 켜 주세요.');try{await push.send(device().subscription,{title:'미리타 알림이 연결됐어요',body:'출근길 알림을 이 기기에서 받을 수 있어요.',tag:'mirita-test',url:'/app'});}catch(e){if(e.status===404||e.status===410)await store.transaction(d=>{ensure(d).subscription=null;});throw new AppError('알림을 보내지 못했어요. 알림 연결을 다시 확인해 주세요.',502);}return json(200,{ok:true});}
+ if(path==='/api/push/test'&&req.method==='POST'){if(!push.ready)throw new AppError('서버 알림 설정이 필요해요.',503);if(!device().subscription)throw new AppError('먼저 알림을 켜 주세요.');const sentSubscription=device().subscription;try{await push.send(sentSubscription,{title:'미리타 알림이 연결됐어요',body:'출근길 알림을 이 기기에서 받을 수 있어요.',tag:'mirita-test',url:'/app'});}catch(e){if(e.status===404||e.status===410)await store.transaction(d=>{if(JSON.stringify(d.devices[deviceId]?.subscription)===JSON.stringify(sentSubscription))d.devices[deviceId].subscription=null;});throw new AppError('알림을 보내지 못했어요. 알림 연결을 다시 확인해 주세요.',502);}return json(200,{ok:true});}
  if(path==='/api/device'&&req.method==='DELETE'){await store.transaction(d=>{delete d.devices[deviceId];});res.setHeader('Set-Cookie','mirita_device=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0');return json(200,{ok:true});}
  throw new AppError('요청을 찾지 못했어요.',404);
  }catch(e){if(!res.headersSent)json(e instanceof AppError?e.status:500,{error:e instanceof AppError?e.message:'저장하지 못했어요. 입력 내용은 유지돼요. 다시 시도해 주세요.'});else res.end();}

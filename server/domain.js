@@ -11,3 +11,5 @@ export function departure(seconds,walk,buffer){
  const left=seconds-(walk+buffer)*60;
  return {minutes:Math.ceil(seconds/60),leaveInMinutes:Math.max(0,Math.floor(left/60)),state:seconds<walk*60?'missed':left<=0?'leave':'wait'};
 }
+// Alias and enabled-state changes do not create a new notification configuration.
+export function notificationKey(r){return JSON.stringify([r.station.id,r.station.arsId,r.bus.id,r.bus.order,r.walkMinutes,r.bufferMinutes,r.time,r.days]);}

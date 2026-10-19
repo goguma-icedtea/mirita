@@ -1,7 +1,7 @@
 import test from 'node:test';import assert from 'node:assert/strict';import { mkdtemp, mkdir, rm } from 'node:fs/promises';import { join } from 'node:path';
 import { Store } from '../server/store.js';import { Transit } from '../server/transit.js';import { createApp } from '../server/app.js';
 const draft={origin:'집',station:{id:'100000001',arsId:'01001',name:'종로2가'},bus:{id:'100100001',name:'143',order:'3'},walkMinutes:7,bufferMinutes:1,time:'08:30',days:[1,2,3,4,5],enabled:true};
-async function setup(t){await mkdir('test-results',{recursive:true});const dir=await mkdtemp(join(process.cwd(),'test-results','api-'));const store=await Store.open(join(dir,'db.json'));const server=createApp({store,transit:new Transit(),push:{ready:false,keys:{publicKey:''}}});await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const base=`http://127.0.0.1:${server.address().port}`;t.after(async()=>{await new Promise(resolve=>server.close(resolve));await rm(dir,{recursive:true,force:true});});let cookie='';return {base,store,async req(path,method='GET',body,custom={}){const r=await fetch(base+path,{method,headers:{Cookie:cookie,Origin:base,'Content-Type':'application/json',...custom},body:body===undefined?undefined:JSON.stringify(body)});if(r.headers.has('set-cookie'))cookie=r.headers.get('set-cookie').split(';')[0];return r;}};}
+async function setup(t,options={}){await mkdir('test-results',{recursive:true});const dir=await mkdtemp(join(process.cwd(),'test-results','api-'));const store=await Store.open(join(dir,'db.json'));const server=createApp({store,transit:new Transit(),push:options.push||{ready:false,keys:{publicKey:''}}});await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const base=`http://127.0.0.1:${server.address().port}`;t.after(async()=>{await new Promise(resolve=>server.close(resolve));await rm(dir,{recursive:true,force:true});});let cookie='';return {base,store,async req(path,method='GET',body,custom={}){const r=await fetch(base+path,{method,headers:{Cookie:cookie,Origin:base,'Content-Type':'application/json',...custom},body:body===undefined?undefined:JSON.stringify(body)});if(r.headers.has('set-cookie'))cookie=r.headers.get('set-cookie').split(';')[0];return r;}};}
 test('HTTP create/read/update/delete persists and isolates anonymous devices',async t=>{
  const a=await setup(t);let r=await a.req('/api/routes','POST',draft);assert.equal(r.status,201);const saved=await r.json();assert.ok(saved.id);
  assert.equal((await(await a.req('/api/routes')).json()).routes.length,1);assert.equal((await(await a.req(`/api/routes/${saved.id}/arrival`)).json()).advice.state,'leave');
@@ -12,4 +12,17 @@ test('HTTP create/read/update/delete persists and isolates anonymous devices',as
 test('HTTP rejects cross-origin writes, invalid body and fabricated bus selection',async t=>{
  const a=await setup(t);assert.equal((await a.req('/api/routes','POST',draft,{Origin:'https://evil.test'})).status,403);assert.equal((await a.req('/api/routes','POST',{...draft,walkMinutes:0})).status,400);assert.equal((await a.req('/api/routes','POST',{...draft,bus:{...draft.bus,id:'9999'}})).status,400);
  assert.equal((await a.req('/api/push/test','POST',{})).status,503);assert.equal((await a.req('/api/stations?q=없는정류장')).status,200);assert.equal((await a.req('/server/index.js')).status,404);
+});
+
+test('alias edits and notification toggles preserve already delivered stages',async t=>{
+ const a=await setup(t);const r=await(await a.req('/api/routes','POST',draft)).json();await a.store.transaction(d=>{Object.values(d.devices)[0].routes[0].alerts={day:'2026-10-19',sent:['ready']};});
+ await a.req('/api/routes/'+r.id,'PUT',{...draft,origin:'다른 별칭',enabled:false});await a.req('/api/routes/'+r.id,'PUT',{...draft,enabled:true});assert.deepEqual(Object.values(a.store.read().devices)[0].routes[0].alerts,{day:'2026-10-19',sent:['ready']});
+ await a.req('/api/routes/'+r.id,'PUT',{...draft,time:'09:30'});assert.equal(Object.values(a.store.read().devices)[0].routes[0].alerts,undefined);
+});
+test('unknown cookie rotation cannot bypass the independent IP request budget',async t=>{
+ const a=await setup(t);let code;for(let i=0;i<601;i++){code=(await a.req('/api/config','GET',undefined,{Cookie:'mirita_device='+i.toString(16).padStart(64,'0')})).status;}assert.equal(code,429);
+});
+test('failed test notification does not remove a newly reconnected subscription',async t=>{
+ let a;const replacement={endpoint:'replacement'};const push={ready:true,keys:{publicKey:'key'},send:async()=>{await a.store.transaction(d=>{Object.values(d.devices)[0].subscription=replacement;});throw Object.assign(Error(),{status:410});}};
+ a=await setup(t,{push});await a.req('/api/routes','POST',draft);await a.store.transaction(d=>{Object.values(d.devices)[0].subscription={endpoint:'old'};});assert.equal((await a.req('/api/push/test','POST',{})).status,502);assert.deepEqual(Object.values(a.store.read().devices)[0].subscription,replacement);
 });
