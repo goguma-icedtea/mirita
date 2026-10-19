@@ -1,0 +1,1 @@
+{"id": "/app", "name": "미리타 · 출근길 버스 알림", "short_name": "미리타", "start_url": "/app", "display": "standalone", "lang": "ko", "background_color": "#F3F8FF", "theme_color": "#2463C5", "icons": [{"src": "/assets/logo.png", "sizes": "any", "type": "image/png", "purpose": "any"}]}

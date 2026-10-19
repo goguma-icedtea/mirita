@@ -1,0 +1,11 @@
+import { resolve } from 'node:path';
+import { Store } from './store.js';import { Transit } from './transit.js';import { Push } from './push.js';import { createApp } from './app.js';import { runTick } from './scheduler.js';
+const port=Number(process.env.PORT||3000);const origin=process.env.APP_ORIGIN||`http://localhost:${port}`;
+if(process.env.NODE_ENV==='production'&&!origin.startsWith('https://'))throw Error('Production requires HTTPS APP_ORIGIN');
+const store=await Store.open(resolve(process.env.DATA_DIR||'data','db.json'));
+const transit=new Transit({key:process.env.SEOUL_BUS_API_KEY||''});
+const push=new Push({publicKey:process.env.VAPID_PUBLIC_KEY,privateKey:process.env.VAPID_PRIVATE_KEY,subject:process.env.VAPID_SUBJECT});
+const server=createApp({store,transit,push,origin});
+const timer=setInterval(()=>runTick({store,transit,push}).then(s=>{if(s.errors)console.warn(`Scheduler: ${s.errors} delivery/provider errors`);}).catch(()=>console.error('Scheduler: storage error')),60000);timer.unref();
+server.listen(port,process.env.HOST||'0.0.0.0',()=>console.log(`Mirita listening on ${origin} (${transit.mode}, push ${push.ready?'configured':'disabled'})`));
+let stopping=false;for(const signal of ['SIGINT','SIGTERM'])process.on(signal,()=>{if(stopping)return;stopping=true;clearInterval(timer);server.close(()=>process.exit(0));setTimeout(()=>process.exit(1),10000).unref();});

@@ -1,0 +1,117 @@
+
+/* 첨부된 mirita_mobile.html의 색상, 글꼴, 버튼, 여백 토큰을 그대로 사용합니다. */
+:root {
+  --color-primary:#2463C5;
+  --color-bg:#F3F8FF;
+  --color-surface:#FFFFFF;
+  --color-text:#163465;
+  --color-muted:#637C9F;
+  --color-line:#D6E3F4;
+  --fs-xs:12px;
+  --fs-sm:14px;
+  --fs-md:16px;
+  --fs-lg:20px;
+  --fs-xl:24px;
+  --sp-1:8px;
+  --sp-2:16px;
+  --sp-3:24px;
+  --sp-4:32px;
+  --radius:8px;
+  --btn-h:48px;
+  --phone-w:390px;
+  --logo-h:24px;
+  --border-w:1px;
+  --opacity-pressed:.82;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--color-bg);color:var(--color-text);font-family:Pretendard,'Malgun Gothic',sans-serif;font-size:var(--fs-md);-webkit-text-size-adjust:100%}
+button,input{font:inherit}
+button{cursor:pointer}
+.page{width:min(var(--phone-w),100%);margin-inline:auto;background:var(--color-bg)}
+.header{min-height:64px;display:flex;align-items:center;padding:var(--sp-2) var(--sp-3);gap:var(--sp-2)}
+.brand{display:flex;align-items:center;gap:var(--sp-1);font-weight:700}
+.brand img{width:var(--logo-h);height:var(--logo-h);object-fit:contain}
+.eyebrow{color:var(--color-primary);font-size:var(--fs-sm);font-weight:700;margin:0 0 var(--sp-2);line-height:1.5}
+h1{font-size:var(--fs-xl);line-height:1.4;margin:0 0 var(--sp-2);letter-spacing:-.035em}
+h2{font-size:var(--fs-lg);line-height:1.4;margin:0 0 var(--sp-2);letter-spacing:-.025em}
+p{line-height:1.6;margin:0 0 var(--sp-2)}
+.muted,.hint{color:var(--color-muted);font-size:var(--fs-sm)}
+.hero{min-height:min(100svh,700px);display:flex;flex-direction:column}
+.hero-inner{flex:1;display:flex;flex-direction:column;padding:var(--sp-2) var(--sp-3) var(--sp-3)}
+.hero .eyebrow{margin-bottom:var(--sp-2)}
+.hero h1{margin-bottom:var(--sp-1)}
+.hero-for{font-size:var(--fs-sm);color:var(--color-muted);margin:0 0 var(--sp-2)}
+.visual{width:100%;height:clamp(175px,30svh,232px);object-fit:cover;object-position:center center;border-radius:var(--radius);background:var(--color-line);display:block;margin:auto 0 var(--sp-2)}
+.primary{width:100%;height:var(--btn-h);border:0;border-radius:var(--radius);background:var(--color-primary);color:var(--color-surface);font-weight:700;display:block}
+.primary:active{opacity:var(--opacity-pressed);transform:translateY(var(--border-w))}
+.primary:focus-visible,.field:focus-visible,summary:focus-visible{outline:var(--border-w) solid var(--color-text);outline-offset:3px}
+.terms{text-align:center;font-size:var(--fs-xs);color:var(--color-muted);margin:var(--sp-1) 0 0;line-height:1.5}
+.section{padding:var(--sp-4) var(--sp-3);border-top:var(--border-w) solid var(--color-line);scroll-margin-top:var(--sp-2)}
+.section p:last-child{margin-bottom:0}
+.panel{background:var(--color-surface);border:var(--border-w) solid var(--color-line);border-radius:var(--radius);padding:var(--sp-2)}
+.steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--sp-1);margin-top:var(--sp-3)}
+.step{background:var(--color-surface);border:var(--border-w) solid var(--color-line);border-radius:var(--radius);padding:var(--sp-2) var(--sp-1);min-width:0;text-align:center}
+.step .step-mark{display:block;font-size:var(--fs-sm);color:var(--color-primary);font-weight:700;margin-bottom:var(--sp-1)}
+.step .step-name{font-size:var(--fs-xs);font-weight:700;line-height:1.5;word-break:keep-all}
+.creator{margin:var(--sp-3) 0 0;display:flex;gap:var(--sp-2);align-items:center}
+.creator-photo{flex:none;width:80px;height:96px;border:var(--border-w) solid var(--color-line);border-radius:var(--radius);background:var(--color-bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--sp-1);color:var(--color-muted);font-size:var(--fs-xs)}
+.creator-photo svg{display:block;width:38px;height:38px}
+.creator-copy{min-width:0;font-size:var(--fs-sm)}
+.creator-copy strong{display:block;margin-bottom:var(--sp-1)}
+.creator-copy p{margin:0 0 var(--sp-1);line-height:1.55}
+.creator-copy p:last-child{margin:0}
+.notification{margin-top:var(--sp-3)}
+.notification .eyebrow{margin-bottom:var(--sp-1);font-size:var(--fs-xs)}
+.notification strong{font-size:var(--fs-md)}
+.notification p{font-size:var(--fs-sm);color:var(--color-muted);margin:var(--sp-1) 0 0}
+.faq{margin-top:var(--sp-3);border-top:var(--border-w) solid var(--color-line)}
+.faq details{border-bottom:var(--border-w) solid var(--color-line);padding:var(--sp-2) 0}
+.faq summary{list-style:none;cursor:pointer;font-weight:700;font-size:var(--fs-sm);display:flex;align-items:center;justify-content:space-between;gap:var(--sp-2)}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:'＋';font-size:var(--fs-lg);color:var(--color-primary);font-weight:400;line-height:1}
+.faq details[open] summary::after{content:'−'}
+.faq details p{font-size:var(--fs-sm);color:var(--color-muted);margin:var(--sp-2) 0 0}
+.support{font-size:var(--fs-xs);color:var(--color-muted);margin:var(--sp-3) 0 0;line-height:1.6}
+.action{padding-bottom:calc(var(--sp-4) + env(safe-area-inset-bottom,0px))}
+.form{margin-top:var(--sp-3)}
+.field-wrap{margin:0 0 var(--sp-2)}
+.field-label{font-size:var(--fs-sm);font-weight:700;display:block;margin-bottom:var(--sp-1)}
+.field{width:100%;height:var(--btn-h);padding:0 var(--sp-2);border:var(--border-w) solid var(--color-line);border-radius:var(--radius);color:var(--color-text);background:var(--color-surface);appearance:none}
+.field::placeholder{color:var(--color-muted)}
+.preview-note{font-size:var(--fs-xs);color:var(--color-muted);margin:var(--sp-2) 0}
+.feedback{font-size:var(--fs-sm);border-left:var(--sp-1) solid var(--color-primary);padding:var(--sp-2);background:var(--color-surface);border-radius:var(--radius);margin-top:var(--sp-2)}
+.feedback[hidden]{display:none}
+.sticky{position:fixed;z-index:10;bottom:0;left:50%;width:min(var(--phone-w),100%);padding:var(--sp-2) var(--sp-3) calc(var(--sp-2) + env(safe-area-inset-bottom,0px));border-top:var(--border-w) solid var(--color-line);background:var(--color-bg);transform:translate(-50%,120%);transition:transform .2s ease;pointer-events:none}
+.sticky.shown{transform:translate(-50%,0);pointer-events:auto}
+@media(max-height:700px){.header{min-height:56px}.hero-inner{padding-top:var(--sp-1);padding-bottom:var(--sp-2)}.visual{height:clamp(150px,26svh,190px)}.hero .eyebrow{margin-bottom:var(--sp-1)}.hero-for{margin-bottom:var(--sp-1)}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.sticky{transition:none}}
+
+/* PC 화면: 기존 브랜드 토큰 유지, 넓은 화면에 맞게 재배치 */
+@media (min-width: 900px) {
+  .page{width:min(1120px,calc(100% - 80px));margin:0 auto}
+  .header{min-height:88px;padding:24px 40px}
+  .brand img{width:32px;height:32px}
+  .hero{min-height:min(790px,100svh)}
+  .hero-inner{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.06fr);grid-template-rows:1fr auto auto;column-gap:64px;align-content:center;align-items:end;padding:56px 40px 72px}
+  .hero .eyebrow{grid-column:1;grid-row:1;align-self:end;font-size:16px;margin:0 0 24px}
+  .hero h1{grid-column:1;grid-row:2;font-size:48px;line-height:1.25;margin:0 0 16px}
+  .hero-for{grid-column:1;grid-row:3;font-size:18px;margin:0 0 116px}
+  .visual{grid-column:2;grid-row:1 / 4;height:420px;max-height:55vh;align-self:center;margin:0;object-fit:cover}
+  #hero-cta{grid-column:1;grid-row:3;align-self:end;max-width:360px;margin:0 0 44px}
+  .hero .terms{grid-column:1;grid-row:3;align-self:end;text-align:left;margin:0 0 15px}
+  .section{padding:88px 80px;scroll-margin-top:24px}
+  .section h2{font-size:32px;max-width:780px}
+  .section>p{max-width:760px;font-size:18px}
+  .panel,.faq,.form{max-width:760px}
+  .steps{max-width:760px;gap:16px}
+  .step{padding:24px 16px}
+  .step .step-name{font-size:16px}
+  .sticky{width:100%;left:0;transform:translateY(120%);display:flex;justify-content:center;padding:16px 24px}
+  .sticky.shown{transform:translateY(0)}
+  .sticky .primary{max-width:360px}
+  .action .primary{max-width:360px}
+}
+@media (min-width:900px) and (max-height:740px){.hero{min-height:700px}.visual{max-height:390px}}
+
+.launch{display:flex;align-items:center;justify-content:center;text-decoration:none;margin-top:24px} .brand img{object-fit:cover;object-position:center} .visual{object-fit:contain;background:#fff}
