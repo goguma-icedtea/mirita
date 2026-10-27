@@ -10,17 +10,25 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+          cache: npm
+      - run: npm ci
       - run: npm test
       - run: npm run check
-      - name: Install browser test runner
-        run: npm install --no-save --package-lock=false playwright@1.62.1
+      - run: npm run cf:dry-run
       - run: npx playwright install --with-deps chromium
-      - name: Browser flow
+      - run: npm run db:migrate:local
+      - name: Browser flow against Workers
         run: |
           npm start > /tmp/mirita-server.log 2>&1 &
-          trap 'kill $!' EXIT
-          for i in $(seq 1 30); do curl -fsS http://localhost:3000/healthz && break || sleep 1; done
-          node test/browser.cjs
+          server_pid=$!
+          trap 'kill "$server_pid"' EXIT
+          ready=0
+          for i in $(seq 1 60); do
+            if curl -fsS http://localhost:3000/healthz; then ready=1; break; fi
+            sleep 1
+          done
+          test "$ready" = 1
+          npm run test:browser
       - name: Upload UI verification images
         if: always()
         uses: actions/upload-artifact@v4

@@ -1,0 +1,7 @@
+# 로컬 Workers 전용. 이 파일을 .dev.vars로 복사하세요. 빈 값이면 체험 모드입니다.
+# .dev.vars가 없으면 Wrangler가 .env를 읽을 수 있으므로 Workers 전용 설정은 여기에 분리하세요.
+SEOUL_BUS_API_KEY=""
+VAPID_PUBLIC_KEY=""
+VAPID_PRIVATE_KEY=""
+# 예: mailto:실제운영자이메일 (실제 값을 직접 입력)
+VAPID_SUBJECT=""

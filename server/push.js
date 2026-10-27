@@ -24,7 +24,7 @@ export function encrypt(payload,sub,{salt=randomBytes(16),privateKey}={}){
 export function authorization(endpoint,keys,subject,now=Math.floor(Date.now()/1000)){
  const pub=decode(keys.publicKey);const jwk={kty:'EC',crv:'P-256',x:b64(pub.subarray(1,33)),y:b64(pub.subarray(33)),d:keys.privateKey};
  const token=[{typ:'JWT',alg:'ES256'},{aud:new URL(endpoint).origin,exp:now+43200,sub:subject}].map(x=>b64(Buffer.from(JSON.stringify(x)))).join('.');
- const signature=sign('sha256',Buffer.from(token),{key:createPrivateKey({key:jwk,format:'jwk'}),dsaEncoding:'ieee-p1363'});return `vapid t=${token}.${b64(signature)}, k=${keys.publicKey}`;
+ const signature=sign('sha256',Buffer.from(token),{key:createPrivateKey({key:jwk,format:'jwk'}).export({format:'pem',type:'pkcs8'}),dsaEncoding:'ieee-p1363'});return `vapid t=${token}.${b64(signature)}, k=${keys.publicKey}`;
 }
 export class Push {
  constructor({publicKey='',privateKey='',subject='',fetcher=fetch}={}){this.keys={publicKey,privateKey};this.subject=subject;this.fetcher=fetcher;this.ready=Boolean(publicKey&&privateKey&&/^(mailto:|https:\/\/)/.test(subject));if(this.ready)authorization('https://fcm.googleapis.com',this.keys,this.subject);}

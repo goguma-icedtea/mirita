@@ -1,1 +1,33 @@
-{"name":"mirita","version":"1.0.0","private":true,"type":"module","engines":{"node":">=24"},"scripts":{"start":"node --env-file-if-exists=.env server/index.js","dev":"node --watch --env-file-if-exists=.env server/index.js","test":"node --test test/*.test.js","keys":"node server/push.js --generate-keys","check":"node --check public/app.js && node --check public/sw.js && node --check server/index.js"}}
+{
+  "name": "mirita",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "start": "node scripts/wrangler.mjs dev",
+    "dev": "node scripts/wrangler.mjs dev",
+    "test": "node --test test/*.test.js",
+    "keys": "node server/push.js --generate-keys",
+    "check": "node scripts/check.mjs",
+    "start:node": "node --env-file-if-exists=.env server/index.js",
+    "db:migrate:local": "node scripts/wrangler.mjs d1 migrations apply DB --local",
+    "cf:whoami": "node scripts/wrangler.mjs whoami",
+    "cf:login": "node scripts/wrangler.mjs login",
+    "cf:connect": "node scripts/cloudflare-setup.mjs",
+    "cf:deploy": "node scripts/cloudflare-setup.mjs --deploy",
+    "cf:dry-run": "node scripts/wrangler.mjs deploy --dry-run --outdir .wrangler/dist",
+    "cf:tail": "node scripts/wrangler.mjs tail --config .wrangler.deploy.json",
+    "test:browser": "node test/browser.cjs && node test/browser-cloud.cjs",
+    "icons": "node scripts/build-icons.mjs",
+    "cf:push": "node scripts/cloudflare-push.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "miniflare": "5.20261023.0-beta",
+    "playwright": "1.62.1",
+    "wrangler": "4.153.0"
+  }
+}
