@@ -1,86 +1,77 @@
 # 미리타 · MIRITA
 
-버스 시간을 찾는 대신, 집에서 나갈 시간을 안내하는 출근길 PWA입니다. 첨부된 브랜드·디자인 문서와 로고·키 비주얼을 바탕으로 제작했습니다.
+버스의 도착 예상과 정류장까지 걸리는 시간을 함께 보고, 집에서 나갈 시점을 안내하는 모바일 PWA입니다. 서울 버스를 우선 지원하며 가입 없이 기기별 경로를 저장합니다.
 
-## 실행
+운영 구조는 **Cloudflare Workers + Static Assets + D1 + Cron + Web Push**입니다. Node 파일 서버는 기존 구현 회귀 검증용으로 남겨 두었습니다.
 
-Node.js 24 이상이 필요합니다. 외부 런타임 패키지 설치 없이 실행합니다.
+## 로컬 실행
+
+Node.js 24 이상이 필요합니다.
 
 ```sh
-cp .env.example .env
+npm ci
+cp .dev.vars.example .dev.vars # 기존 파일이 있으면 덮어쓰지 마세요.
+npm run db:migrate:local
 npm start
 ```
 
-- 앱: http://localhost:3000/app
-- 7블록 소개 페이지: http://localhost:3000/
-- 인증키가 없으면 **체험 모드**로 시작합니다. `종로` 또는 `광화문`을 검색하면 샘플 정류장과 버스를 선택할 수 있습니다. 저장/수정/삭제는 실제 서버 저장이며 도착 시간은 예시입니다. 자동 알림은 발송하지 않습니다.
+- `/app`: 미리타 PWA, `/`: 소개 페이지, `/healthz`: 상태 확인.
+- 기본 포트는 3000입니다. `npm start`와 `npm run dev`는 로컬 Workers(workerd)를 실행합니다.
+- 키가 없으면 **체험 모드**입니다. `종로` 또는 `광화문`을 검색하면 샘플 정류장·버스를 선택할 수 있습니다. 경로는 실제 로컬 D1에 저장되지만 도착 정보는 예시이며 자동 버스 알림은 발송하지 않습니다.
+- 로컬 D1은 Git에서 제외된 `.wrangler/state`에 남습니다. 기존 Node의 `data/db.json`은 자동 이관하지 않습니다.
+- `.dev.vars`는 로컬 비밀값입니다. 없으면 Wrangler가 `.env`를 읽을 수도 있으므로 기존 운영·Node 설정과 분리하세요. 배포 서버의 Secrets는 별도로 등록해야 합니다.
 
-## 구현 기능
+## Cloudflare 연결과 배포
 
-- 정류장 이름 검색·주변 정류장 검색, 정류장별 버스 선택
-- 출발지 별칭·도보 시간·여유시간·탑승 목표 시각·요일 설정
-- 익명 기기별 경로 저장·수정·삭제·알림 켜기/끄기 (최대 10개)
-- 서울 실시간 도착 정보, 도보와 여유시간을 반영한 출발 안내
-- Web Push 구독·해제·테스트 발송, 서비스 워커의 백그라운드 알림
-- 서버에서 60초마다 선택한 요일·탑승 목표 시각 전 60분 확인
-- 도착 30분 이하 첫 안내, 도보+여유시간 이하 출발 안내. 같은 경로 설정/탑승일/단계당 1회 (별칭 변경과 알림 토글은 이력 유지)
-- 반응형 레이아웃, 설치 가능한 PWA, 키보드 탐색, 상태/빈 결과/오프라인 안내
-- 전체 기기 데이터 삭제와 공유
-
-## 실시간 서울 버스 연결
-
-[공공데이터포털](https://www.data.go.kr/)에서 **서울특별시_정류소정보조회 서비스**와 **서울특별시_버스도착정보조회 서비스** 이용을 신청하고 두 서비스에 유효한 인증키를 `.env`의 `SEOUL_BUS_API_KEY`에 입력합니다. **Decoding 키**를 그대로 넣습니다. 서버가 URL 인코딩합니다.
-
-서버는 HTTPS `ws.bus.go.kr/api/rest/`의 `getStationByName`, `getStationByPos`, `getRouteByStation`, `getArrInfoByRoute` JSON 응답을 정규화합니다. 지역은 서울로 한정하며 다른 지역 버스는 지원하지 않습니다. 요청에 8초 제한, 검색/노선 캐시 60초, 도착 정보 캐시 15초를 적용합니다. 실시간 조회 실패 시 예시 데이터로 대체하지 않습니다.
-
-[정류소 조회 공식 안내](https://www.data.go.kr/data/15000303/openapi.do) · [도착 조회 공식 안내](https://www.data.go.kr/data/15000314/openapi.do)
-
-## 실제 모바일 알림 연결
+자세한 계정·토큰 설정은 [Cloudflare 안내](docs/cloudflare.md)를 확인하세요. 이미 인증했다면 다음 명령으로 연결하고 배포합니다.
 
 ```sh
-npm run keys
+npm run cf:connect
+npm run cf:deploy
 ```
 
-출력된 `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`를 서버 비밀 환경변수에 설정하고 `VAPID_SUBJECT`에 운영자 `mailto:` 주소를 지정합니다. 키 출력에는 비밀키가 포함되므로 저장소에 커밋하지 마세요. 운영 중 키 변경은 기존 구독을 무효화하므로 기기에서 다시 연결해야 합니다.
+`cf:connect`는 계정의 `mirita-db`를 재사용하거나 생성하고 실제 바인딩을 `.wrangler.deploy.json`에 저장합니다. `cf:deploy`는 원격 마이그레이션·번들 검사·Workers 배포를 실행합니다. Cloudflare가 출력한 실제 HTTPS 주소에서 확인하세요. 인증 전에는 배포되지 않습니다.
 
-운영 서버 `APP_ORIGIN=https://실제도메인`을 설정하고 TLS 프록시 뒤에서 서버를 실행합니다. 앱의 **설정 → 알림 연결하기 → 테스트 알림**을 사용합니다. 자동 버스 알림은 실시간 모드에서만 발송합니다. 알림 권한이 없거나 서버 설정이 빠지면 완료 화면에서 연결이 필요한 상태를 안내합니다.
+로컬 컴퓨터에서는 `npm run cf:login`으로 로그인할 수 있습니다. Codex 환경에서는 `CLOUDFLARE_ACCOUNT_ID`와 `CLOUDFLARE_API_TOKEN`을 환경 설정에 안전하게 저장하세요. 비밀값을 채팅이나 저장소에 붙이지 마세요.
 
-iOS/iPadOS는 지원 버전에서 홈 화면에 추가한 웹앱으로 사용합니다. OS 절전·브라우저 정책·푸시 서비스·네트워크에 따라 전달이 지연되거나 누락될 수 있습니다. 테스트 요청 성공은 실제 수신 확인을 의미하지 않습니다.
+## 실제 버스·휴대폰 알림
 
-Web Push는 Node crypto를 사용한 [RFC 8291](https://www.rfc-editor.org/rfc/rfc8291.html) aes128gcm과 [RFC 8292](https://www.rfc-editor.org/rfc/rfc8292.html) VAPID이며, 공식 암호화 벡터와 독립적인 JWT 서명 검증 테스트를 포함합니다. Google FCM·Mozilla·Apple 공개 푸시 호스트만 허용하며 리디렉션을 따라가지 않습니다.
-
-## 저장과 운영
-
-경로와 구독은 `DATA_DIR/db.json`에 권한 0600으로 저장하며 원자적 교체와 프로세스 내 직렬 트랜잭션을 사용합니다. API 요청 제한은 기기당 분당 180회, 연결 IP당 분당 600회입니다. 리버스 프록시 환경에서는 프록시 자체의 요청 제한도 설정하세요.
-
-**단일 인스턴스 + 영구 볼륨**으로 운영해야 합니다. 여러 프로세스나 서버리스 임시 파일시스템을 사용하면 안 됩니다. 확장 시 공용 DB와 작업 큐로 교체해야 합니다. 재시작해도 경로와 알림 중복 방지 상태가 유지됩니다. 전송 성공 직후 프로세스가 중단되면 중복 가능성이 남는 at-least-once 방식입니다.
-
-로그인 없이 HttpOnly/SameSite 쿠키로 기기를 구분합니다. 다른 브라우저에서 경로를 복구할 수 없으며 쿠키를 지우면 기존 경로에 접근할 수 없습니다. 쿠키를 삭제하기 전 앱의 데이터 삭제 버튼으로 서버 데이터를 지울 수 있습니다. 위치는 주변 검색에만 쓰며 저장하지 않습니다. 도보 시간은 사용자가 직접 입력하며 길찾기 기반 자동 계산은 하지 않습니다.
-
-Docker 예시:
+[공공데이터포털](https://www.data.go.kr/)에서 서울특별시 정류소정보조회·버스도착정보조회 서비스에 승인된 Decoding 키가 필요합니다. 배포 연결 후 입력합니다.
 
 ```sh
-docker build -t mirita .
-docker run --env-file .env -e NODE_ENV=production -e APP_ORIGIN=https://your-domain.example -v mirita-data:/app/data -p 3000:3000 mirita
+node scripts/wrangler.mjs secret put SEOUL_BUS_API_KEY --config .wrangler.deploy.json
+npm run cf:push -- mailto:실제운영자이메일
 ```
 
-TLS 프록시에서 HTTPS를 종료하고 Web Push와 서울 API에 대한 서버 외부 연결을 허용하세요. 서버의 `APP_ORIGIN`은 브라우저 주소와 정확히 일치해야 합니다. `/healthz`는 헬스체크입니다. 저장소에 키·`.env`·사용자 데이터·푸시 구독은 포함하지 않습니다.
+두 번째 명령은 VAPID 키를 비공개로 생성·등록하며 이미 설정된 키 쌍을 유지합니다. PWA의 **설정 → 알림 연결하기 → 테스트 알림**으로 실제 수신을 확인하세요. Android와 iPhone 모두 HTTPS·지원 OS·설치·사용자 권한 조건을 충족해야 합니다. iPhone은 지원 OS에서 Safari의 홈 화면 추가 후 웹앱을 열어 연결합니다.
+
+자동 알림은 **실시간 버스 도착 예측 기준 30·15·5분**입니다. 목표 탑승 시각은 사용자 계획이며 실제 예측 시각과 다릅니다. 집에서 나갈 시각은 예측 도착−도보 시간−여유시간(기본 1분)으로 표시합니다. API가 해당 단계의 예측을 제공하지 않거나 늦게 설정한 단계는 미발송으로 남기며, 설정 시각 알림으로 대체하지 않습니다. OS·절전·네트워크에 따른 지연과 누락이 가능하며 정확한 수신 시각을 보장하지 않습니다.
+
+## 구현 범위
+
+- 정류장 검색·주변 검색, 정류장별 버스·방향 선택.
+- 목표 탑승 시각·요일·도보·여유시간, 경로 최대 10개 저장·수정·삭제.
+- 익명 기기 쿠키와 D1 소유자 검증, CSRF 검사·요청 제한, 전체 데이터 삭제.
+- 목표에 가까운 첫째/둘째 도착 차량 선택·고정, 원본 갱신 시각·출발 예상·단계 이력 표시.
+- 경로·서울 탑승일·단계별 원자적 claim, 중복 Cron 방지, 명시적 거절 재시도·구독 만료 처리.
+- 반응형 화면, 모바일 하단 탐색·터치 영역, 설치용 아이콘, 오프라인 앱 셸·권한 상태 안내.
+
+무료 운영은 사용량과 실제 CPU에 따라 달라집니다. 무료 한도·일정당 API 요청량·Cron 처리 규모는 [운영 문서](docs/cloudflare.md)에 기록했습니다. 사용자 동의 없이 유료 플랜으로 전환하지 않습니다.
 
 ## 검증
 
 ```sh
 npm test
 npm run check
-# UI 회귀 검증용 개발 도구
-npm install --no-save --package-lock=false playwright@1.62.1
-npx playwright install chromium
-npm start
-# 다른 터미널
-node test/browser.cjs
+npm run cf:dry-run
+# npm start로 체험 모드 Workers를 실행한 다른 터미널에서:
+npm run test:browser
 ```
 
-자동 테스트는 입력 경계·동시 저장/롤백·공급자 오류·기기 격리/CSRF·CRUD·푸시 암호화/서명·중복 방지/재시도/만료·서울 시간대를 확인합니다. 브라우저 테스트는 390px과 1440px에서 검색 빈 결과, 생성, 새로고침 유지, 수정, 삭제, 가로 넘침과 JS 오류를 확인합니다. GitHub Actions가 같은 검사를 실행합니다.
+브라우저 테스트는 시스템 Chromium이 있으면 사용합니다. 없으면 `npx playwright install --with-deps chromium`으로 설치하거나 `CHROMIUM_PATH`를 지정하세요. 모바일 390px·PC 1440px의 CRUD·새로고침·빈 결과·레이아웃·오프라인 PWA·알림 권한/구독 상태를 확인합니다.
 
-**실제 인증키를 이용한 버스 API 응답과 HTTPS 모바일 푸시 수신은 별도 운영 검증이 필요합니다.** 현재 구현 검증은 체험 모드와 공급자 모의 응답으로 이루어집니다. 광고 SDK, 계정/기기 간 동기화, 유료 결제는 포함하지 않습니다.
+테스트에는 실제 로컬 workerd/D1 통합, 시계·공급자·전송을 제어하는 일정 테스트, Node와 workerd 양쪽의 RFC 암호화 벡터·독립 서명 검증이 포함됩니다. 실제 API·Cloudflare 배포·휴대폰 수신과는 구분합니다. [현재 검증 상태](docs/cloudflare-verification.md)를 확인하세요.
 
-설계: [구현 설계](docs/superpowers/specs/2026-10-19-mirita-design.md) · [작업 계획](docs/superpowers/plans/2026-10-19-mirita.md)
+이전 Node 경로는 `npm run start:node`로 실행합니다. 파일 저장·2단계 알림을 사용하는 기존 회귀 구현이므로 새 운영 배포에는 사용하지 않습니다. 기존 Dockerfile도 해당 Node 경로용입니다.
+
+설계: [서버리스 설계](docs/superpowers/specs/2026-10-27-cloudflare-design.md) · [구현 계획](docs/superpowers/plans/2026-10-27-cloudflare.md)

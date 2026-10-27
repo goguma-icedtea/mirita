@@ -1,0 +1,13 @@
+PRAGMA foreign_keys = ON;
+CREATE TABLE devices (id TEXT PRIMARY KEY, created_at INTEGER NOT NULL);
+CREATE TABLE routes (id TEXT PRIMARY KEY, device_id TEXT NOT NULL REFERENCES devices(id) ON DELETE CASCADE, data TEXT NOT NULL CHECK(json_valid(data)), revision INTEGER NOT NULL DEFAULT 1, next_check INTEGER NOT NULL, updated_at INTEGER NOT NULL);
+CREATE INDEX routes_owner ON routes(device_id);
+CREATE INDEX routes_due ON routes(next_check);
+CREATE TRIGGER routes_limit BEFORE INSERT ON routes WHEN (SELECT count(*) FROM routes WHERE device_id=NEW.device_id)>=10 BEGIN SELECT RAISE(ABORT, 'route_limit'); END;
+CREATE TABLE subscriptions (device_id TEXT PRIMARY KEY REFERENCES devices(id) ON DELETE CASCADE, data TEXT NOT NULL CHECK(json_valid(data)), revision TEXT NOT NULL);
+CREATE TABLE commutes (route_id TEXT NOT NULL REFERENCES routes(id) ON DELETE CASCADE, day TEXT NOT NULL, vehicle_id TEXT, arrival_at INTEGER, checked_at INTEGER, status TEXT NOT NULL DEFAULT 'monitoring', PRIMARY KEY(route_id,day));
+CREATE TABLE notification_events (route_id TEXT NOT NULL, day TEXT NOT NULL, stage INTEGER NOT NULL CHECK(stage IN (30,15,5)), status TEXT NOT NULL CHECK(status IN ('sending','sent','skipped','retry','uncertain')), claim TEXT, updated_at INTEGER NOT NULL, PRIMARY KEY(route_id,day,stage), FOREIGN KEY(route_id,day) REFERENCES commutes(route_id,day) ON DELETE CASCADE);
+CREATE TABLE rate_limits (key TEXT PRIMARY KEY, count INTEGER NOT NULL, expires_at INTEGER NOT NULL);
+CREATE INDEX rate_expiry ON rate_limits(expires_at);
+CREATE TABLE transit_cache (key TEXT PRIMARY KEY, data TEXT NOT NULL, expires_at INTEGER NOT NULL);
+CREATE INDEX transit_expiry ON transit_cache(expires_at);

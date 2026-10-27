@@ -1,1 +1,26 @@
-{"id": "/app", "name": "미리타 · 출근길 버스 알림", "short_name": "미리타", "start_url": "/app", "display": "standalone", "lang": "ko", "background_color": "#F3F8FF", "theme_color": "#2463C5", "icons": [{"src": "/assets/logo.png", "sizes": "any", "type": "image/png", "purpose": "any"}]}
+{
+  "id": "/app",
+  "name": "미리타 · 출근길 버스 알림",
+  "short_name": "미리타",
+  "start_url": "/app",
+  "display": "standalone",
+  "lang": "ko",
+  "background_color": "#F3F8FF",
+  "theme_color": "#2463C5",
+  "icons": [
+    {
+      "src": "/assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "description": "버스 도착 예상과 집에서 나갈 시점을 안내하는 출근길 PWA",
+  "scope": "/"
+}
